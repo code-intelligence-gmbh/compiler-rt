@@ -21,6 +21,7 @@
 #include <memory>
 #include <mutex>
 #include <set>
+#include <stdint.h>
 
 #if defined(__has_include)
 #if __has_include(<sanitizer / lsan_interface.h>)
@@ -854,8 +855,18 @@ extern "C" {
 
 __attribute__((visibility("default"))) size_t
 LLVMFuzzerMutate(uint8_t *Data, size_t Size, size_t MaxSize) {
-  assert(fuzzer::F);
-  return fuzzer::F->GetMD().DefaultMutate(Data, Size, MaxSize);
+  if (fuzzer::F) {
+    return fuzzer::F->GetMD().DefaultMutate(Data, Size, MaxSize);
+  }
+  unsigned Seed = std::chrono::system_clock::now().time_since_epoch().count();
+  fuzzer::Random Rand(Seed);
+  fuzzer::FuzzingOptions Options;
+  if (!fuzzer::EF) {
+    fuzzer::EF = new fuzzer::ExternalFunctions();
+
+  }
+  fuzzer::MutationDispatcher MD(Rand, Options);
+  return MD.DefaultMutate(Data, Size, MaxSize);
 }
 
 // Experimental
